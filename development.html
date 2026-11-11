@@ -49,6 +49,7 @@ cargo clippy --workspace --lib --bins --examples --all-features --locked -- -D w
 </code></pre>
 <p>All-targets checking compiles tests, examples and benches; it does not execute Criterion benchmarks. Strict source linting is separate from test implementation style.</p>
 <h2 id="fixture-tests">Fixture tests</h2>
+<p>CLI fixtures must use the binary path supplied by Cargo/nextest at runtime, and fail when that binding is missing. Do not select an installed binary from <code>PATH</code>. See <a href="https://nexte.st/docs/configuration/env-vars/">nextest runtime variables</a>.</p>
 <p>Install <code>cargo-nextest</code> from its official distribution, then:</p>
 <pre><code class="language-sh">CARGO_BUILD_JOBS=2 cargo nextest run --workspace --lib --tests \
   --all-features --locked --test-threads 2 --no-fail-fast
@@ -78,7 +79,7 @@ python3 -m http.server 8000 --directory target/devdocs
 <p>The public site contains documentation only. It does not make the private source repository or release assets public.</p>
 
     <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="architecture.html"><small>Previous</small><span>Architecture ←</span></a><a class="pager-next" href="releases.html"><small>Next</small><span>Release packages →</span></a></nav>
-    <footer>Source snapshot <code>9b35322</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+    <footer>Source snapshot <code>d53f71a</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
   </main>
   <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h2" href="#compiler-policy">Compiler policy</a><a class="toc-h2" href="#fast-checks">Fast checks</a><a class="toc-h2" href="#fixture-tests">Fixture tests</a><a class="toc-h2" href="#native-os-coverage">Native OS coverage</a><a class="toc-h2" href="#assurance-checks">Assurance checks</a><a class="toc-h2" href="#build-these-docs">Build these docs</a></aside>
 </div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
