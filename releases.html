@@ -87,7 +87,7 @@ python3 scripts/package_release.py \
 install -m 755 target-reaper &quot;$HOME/.local/bin/target-reaper&quot;
 &quot;$HOME/.local/bin/target-reaper&quot; --version
 </code></pre>
-<p>Unsigned development Mac binaries are not notarized applications. A binary that runs on the verification Mac is not automatically certified for all older macOS versions.</p>
+<p>Development Mac binaries are not notarized applications. The native workflow records the actual SDK and <code>MACOSX_DEPLOYMENT_TARGET</code> in its <code>macos-toolchain.json</code> verification artifact. Check that deployment target before using an archive on an older Mac; a source build can use an explicitly selected compatible SDK/target and needs its own native verification. A binary that runs on the verification Mac is not automatically certified for all older macOS versions.</p>
 <h2 id="distribution-boundary">Distribution boundary</h2>
 <p>The source repository and its release assets are private. Public documentation does not grant download access. No new production release is claimed until the matching Mac and Linux artifacts and required verification actually exist.</p>
 <h2 id="prepared-native-build-workflow">Prepared native build workflow</h2>
@@ -97,7 +97,7 @@ install -m 755 target-reaper &quot;$HOME/.local/bin/target-reaper&quot;
 <p>This workflow does not waive vet provenance, dependency policy or other release-assurance obligations. Workflow artifacts are not automatically published as production releases.</p>
 
     <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="development.html"><small>Previous</small><span>Development ←</span></a></nav>
-    <footer>Source snapshot <code>d53f71a</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+    <footer>Source snapshot <code>6dbc3a1</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
   </main>
   <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h2" href="#platform-specific-builds">Platform-specific builds</a><a class="toc-h2" href="#package-contents">Package contents</a><a class="toc-h2" href="#verify-before-installing">Verify before installing</a><a class="toc-h2" href="#distribution-boundary">Distribution boundary</a><a class="toc-h2" href="#prepared-native-build-workflow">Prepared native build workflow</a></aside>
 </div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
