@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CLI reference · Target Reaper DevDocs</title>
+<meta name="description" content="Target Reaper developer documentation: native Mac/Linux setup, cleanup authorization, CLI reference and verification.">
+<link rel="canonical" href="https://lprior-repo.github.io/target-reaper-docs/cli.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/docs.css"><script src="assets/docs.js" defer></script>
+</head><body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">tr<span>_</span></span><span>Target Reaper <small>DevDocs</small></span></a>
+  <div class="search-wrap"><label class="sr-only" for="docs-search">Search documentation</label>
+    <input id="docs-search" type="search" placeholder="Search documentation…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+    <kbd aria-hidden="true">/</kbd><div id="search-results" class="search-results" hidden></div>
+  </div>
+  <a class="source-link" href="https://github.com/lprior-repo/target-reaper">Source <span aria-hidden="true">↗</span><small>private repo</small></a>
+  <button id="menu-toggle" class="menu-toggle" aria-controls="sidebar" aria-expanded="false">Menu</button>
+</header>
+<div class="docs-layout">
+  <aside id="sidebar" class="sidebar"><div class="version">v0.3 <span>Development</span></div>
+    <nav aria-label="Documentation"><p class="nav-section">Start here</p>
+<a href="index.html">Overview</a>
+<a href="install.html">Installation</a>
+<a href="platforms.html">Mac &amp; Linux</a>
+<p class="nav-section">Use Target Reaper</p>
+<a href="usage.html">Common workflows</a>
+<a href="cli.html" aria-current="page">CLI reference</a>
+<a href="safety.html">Safety &amp; authorization</a>
+<a href="automation.html">Automation</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<p class="nav-section">Build &amp; contribute</p>
+<a href="architecture.html">Architecture</a>
+<a href="development.html">Development</a>
+<a href="releases.html">Release packages</a></nav>
+    <div class="sidebar-note">Preview first.<br>Authorize cleanup deliberately.</div>
+  </aside>
+  <main id="content" class="article" tabindex="-1"><div class="eyebrow">Use Target Reaper / Documentation</div>
+    <h1 id="cli-reference">CLI reference</h1>
+<p>Flags, defaults and exit codes for the current development version. For executable help, run <code>target-reaper --help</code>.</p>
+<h3 id="flags">Flags</h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Argument</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--root</code></td>
+<td><code>-r</code></td>
+<td><code>DIR</code> (repeatable)</td>
+<td><em>none</em></td>
+<td>Root directories to scan for Cargo targets. Repeat for multiple roots.</td>
+</tr>
+<tr>
+<td><code>--cache-root</code></td>
+<td>—</td>
+<td><code>DIR</code> (repeatable)</td>
+<td><em>none</em></td>
+<td>Inspect immediate child directories as cache entries. Set roots such as <code>~/.cache</code> or <code>/cache</code> explicitly.</td>
+</tr>
+<tr>
+<td><code>--prune-root</code></td>
+<td>—</td>
+<td><code>DIR</code> (repeatable)</td>
+<td><em>none</em></td>
+<td>Explicitly authorize per-file age cleanup inside a specific directory. Recent files, excluded paths, and busy roots are retained. Missing roots are skipped.</td>
+</tr>
+<tr>
+<td><code>--artifact-root</code></td>
+<td>—</td>
+<td><code>DIR</code> (repeatable)</td>
+<td><em>none</em></td>
+<td>Discover generated <code>fuzz/{corpus,artifacts,crashes,coverage,target}</code>, <code>mutants.out</code>, and <code>.cargo/mutants</code> trees beneath this directory. Contents must be strictly older than 24 hours, even when <code>--age-days 0</code>.</td>
+</tr>
+<tr>
+<td><code>--prune-target-files</code></td>
+<td>—</td>
+<td>—</td>
+<td><code>false</code></td>
+<td>Reclaim old generated compiler artifacts in discovered Cargo targets, including mixed-age targets. Requires <code>--root</code>; preserves source and durable fixture/database/evidence subtrees.</td>
+</tr>
+<tr>
+<td><code>--worktree-repo</code></td>
+<td>—</td>
+<td><code>REPO</code> (repeatable)</td>
+<td><em>none</em></td>
+<td>Inspect worktrees registered to this Git repository. Default policy requires clean, integrated work; primary repositories are always retained.</td>
+</tr>
+<tr>
+<td><code>--worktree-root</code></td>
+<td>—</td>
+<td><code>DIR</code> (repeatable)</td>
+<td><em>none</em></td>
+<td>Discover Git repositories recursively and inspect their registered worktrees. Discard mode also discovers JJ workspaces. Overlapping routes are deduplicated.</td>
+</tr>
+<tr>
+<td><code>--discard-stale-workspaces</code></td>
+<td>—</td>
+<td>—</td>
+<td><code>false</code></td>
+<td>Authorize deletion of inactive old Git/JJ checkouts despite dirty, untracked, ignored, unmerged or recovery-bearing contents. Requires a worktree scope; preserves primary repositories and shared stores.</td>
+</tr>
+<tr>
+<td><code>--prune-merged-branches</code></td>
+<td>—</td>
+<td>—</td>
+<td><code>false</code></td>
+<td>Remove old integrated local Git branches or forget matching local JJ bookmarks. Requires a worktree scope and <code>--refresh-worktree-defaults</code>; never deletes remote refs.</td>
+</tr>
+<tr>
+<td><code>--prune-missing-worktrees</code></td>
+<td>—</td>
+<td>—</td>
+<td><code>false</code></td>
+<td>Remove old missing registrations after validating private metadata. Default policy also requires integrated recovery state; discard mode authorizes its loss. Locked missing registrations remain protected. Requires a worktree scope.</td>
+</tr>
+<tr>
+<td><code>--allow-generated-worktree-cache</code></td>
+<td>—</td>
+<td>—</td>
+<td><code>false</code></td>
+<td>Permit only verified ignored Moon cache/toolchain outputs in otherwise eligible worktrees. Requires a worktree scope.</td>
+</tr>
+<tr>
+<td><code>--refresh-worktree-defaults</code></td>
+<td>—</td>
+<td>—</td>
+<td><code>false</code></td>
+<td>Verify authoritative origin main/master. Execution may fetch the selected tracking ref; preview never fetches. Requires a worktree scope.</td>
+</tr>
+<tr>
+<td><code>--worktree-min-size</code></td>
+<td>—</td>
+<td><code>SIZE</code></td>
+<td><code>0</code></td>
+<td>Independent minimum size for physical worktrees. Branches and missing registrations have no byte threshold.</td>
+</tr>
+<tr>
+<td><code>--exclude</code></td>
+<td>—</td>
+<td><code>DIR</code> (repeatable)</td>
+<td>protected-path defaults</td>
+<td>Additional paths excluded from target, cache, worktree, and per-file cleanup.</td>
+</tr>
+<tr>
+<td><code>--age-days</code></td>
+<td><code>-a</code></td>
+<td><code>DAYS</code></td>
+<td><code>1</code></td>
+<td>Minimum age in 24-hour periods. Whole targets/caches are retained if recent; pruning evaluates each file independently.</td>
+</tr>
+<tr>
+<td><code>--min-size</code></td>
+<td><code>-m</code></td>
+<td><code>SIZE</code></td>
+<td><code>10MB</code></td>
+<td>Minimum size for whole targets/cache directories. Accepts <code>100M</code>, <code>1.5GB</code>, <code>2TB</code>, <code>500K</code>, <code>1048576</code> (raw bytes). Worktrees use <code>--worktree-min-size</code>; per-file pruning does not use either threshold.</td>
+</tr>
+<tr>
+<td><code>--execute</code></td>
+<td><code>-e</code></td>
+<td>—</td>
+<td><code>false</code></td>
+<td>Actually delete. Without this, runs in <strong>dry-run mode</strong>.</td>
+</tr>
+<tr>
+<td><code>--verbose</code></td>
+<td><code>-v</code></td>
+<td>—</td>
+<td><code>false</code></td>
+<td>Print every scanned target with its classification.</td>
+</tr>
+<tr>
+<td><code>--list</code></td>
+<td>—</td>
+<td>—</td>
+<td><code>false</code></td>
+<td>Print stale target paths. Dry-run and execute default to summary-only output.</td>
+</tr>
+<tr>
+<td><code>--quiet</code></td>
+<td>—</td>
+<td>—</td>
+<td><code>false</code></td>
+<td>Suppress optional per-target output. Prints only the final summary.</td>
+</tr>
+<tr>
+<td><code>--jobs</code></td>
+<td>—</td>
+<td><code>N</code></td>
+<td><code>2x CPUs</code>, capped at 32</td>
+<td>Classification worker threads; maximum 128. Useful for I/O-bound metadata scans.</td>
+</tr>
+<tr>
+<td><code>--delete-jobs</code></td>
+<td>—</td>
+<td><code>N</code></td>
+<td><code>--jobs</code></td>
+<td>Safe recursive deletion Rayon threads; maximum 128.</td>
+</tr>
+<tr>
+<td><code>--queue</code></td>
+<td>—</td>
+<td><code>N</code></td>
+<td><code>4096</code></td>
+<td>Bounded pipeline queue capacity; maximum 65536.</td>
+</tr>
+<tr>
+<td><code>--cargo-only</code></td>
+<td>—</td>
+<td><code>bool</code></td>
+<td><code>true</code></td>
+<td>Only include Cargo project targets. Use <code>--cargo-only=false</code> for every directory named <code>target</code>.</td>
+</tr>
+<tr>
+<td><code>--require-clean-scan</code></td>
+<td>—</td>
+<td>—</td>
+<td><code>false</code></td>
+<td>A target scan/classification error prevents target deletion. Other cleanup categories use their own checks.</td>
+</tr>
+<tr>
+<td><code>--skip-fuzz</code></td>
+<td>—</td>
+<td><code>bool</code></td>
+<td><code>true</code></td>
+<td>Skip <code>fuzz/target/</code> directories. Use <code>--skip-fuzz=false</code> to include them.</td>
+</tr>
+<tr>
+<td><code>--log</code></td>
+<td>—</td>
+<td><code>PATH</code></td>
+<td><em>none</em></td>
+<td>Append numeric cleanup counters and retained reasons, plus the string <code>workspace_policy</code>, after completion. Creates parent directories automatically.</td>
+</tr>
+<tr>
+<td><code>--lock-path</code></td>
+<td>—</td>
+<td><code>PATH</code></td>
+<td>Linux: <code>/run/user/{uid}/target-reaper.lock</code>; macOS: <code>/private/tmp/target-reaper-{uid}.lock</code></td>
+<td>Override the shared advisory lock path. Use the same path for automation and manual invocations.</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td><code>-h</code></td>
+<td>—</td>
+<td>—</td>
+<td>Print help (short form) with examples.</td>
+</tr>
+<tr>
+<td><code>--version</code></td>
+<td><code>-V</code></td>
+<td>—</td>
+<td>—</td>
+<td>Print version.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="exit-codes">Exit Codes</h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>Success — no errors during scan or deletion</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>Generic error — bad root path, I/O failure, deletion failure</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>Lock held — another <code>target-reaper</code> is running, or bad CLI arguments</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td>Errors during classification — some targets could not be evaluated</td>
+</tr>
+</tbody>
+</table>
+<h3 id="size-format">Size Format</h3>
+<p>The <code>--min-size</code> flag accepts human-readable sizes. All values are case-insensitive.</p>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Bytes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>500</code>, <code>500B</code>, <code>500b</code></td>
+<td>500</td>
+</tr>
+<tr>
+<td><code>10K</code>, <code>10KB</code></td>
+<td>10,240</td>
+</tr>
+<tr>
+<td><code>100M</code>, <code>100MB</code></td>
+<td>104,857,600</td>
+</tr>
+<tr>
+<td><code>1.5G</code>, <code>1.5GB</code></td>
+<td>1,610,612,736</td>
+</tr>
+<tr>
+<td><code>2T</code>, <code>2TB</code></td>
+<td>2,199,023,255,552</td>
+</tr>
+<tr>
+<td><code>1048576</code></td>
+<td>1,048,576 (raw bytes)</td>
+</tr>
+<tr>
+<td><code>0.5MB</code></td>
+<td>524,288 (fractional)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="arg-inference">Arg Inference</h3>
+<p>Long flags can be abbreviated to their shortest unambiguous prefix:</p>
+<pre><code class="language-bash">target-reaper -r ~/src --exec     # → --execute
+target-reaper -r ~/src --age 7    # → --age-days
+target-reaper -r ~/src --min 10M  # → --min-size
+</code></pre>
+<h2 id="lock-paths">Lock paths</h2>
+<p>The lock serializes cooperating runs. Use one consistent <code>--lock-path</code> for manual and scheduled runs. A dry run still acquires this operational lock.</p>
+
+    <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="usage.html"><small>Previous</small><span>Common workflows ←</span></a><a class="pager-next" href="safety.html"><small>Next</small><span>Safety &amp; authorization →</span></a></nav>
+    <footer>Source snapshot <code>0494adc</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+  </main>
+  <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h3" href="#flags">Flags</a><a class="toc-h3" href="#exit-codes">Exit Codes</a><a class="toc-h3" href="#size-format">Size Format</a><a class="toc-h3" href="#arg-inference">Arg Inference</a><a class="toc-h2" href="#lock-paths">Lock paths</a></aside>
+</div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
+</body></html>

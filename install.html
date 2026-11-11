@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Installation · Target Reaper DevDocs</title>
+<meta name="description" content="Target Reaper developer documentation: native Mac/Linux setup, cleanup authorization, CLI reference and verification.">
+<link rel="canonical" href="https://lprior-repo.github.io/target-reaper-docs/install.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/docs.css"><script src="assets/docs.js" defer></script>
+</head><body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">tr<span>_</span></span><span>Target Reaper <small>DevDocs</small></span></a>
+  <div class="search-wrap"><label class="sr-only" for="docs-search">Search documentation</label>
+    <input id="docs-search" type="search" placeholder="Search documentation…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+    <kbd aria-hidden="true">/</kbd><div id="search-results" class="search-results" hidden></div>
+  </div>
+  <a class="source-link" href="https://github.com/lprior-repo/target-reaper">Source <span aria-hidden="true">↗</span><small>private repo</small></a>
+  <button id="menu-toggle" class="menu-toggle" aria-controls="sidebar" aria-expanded="false">Menu</button>
+</header>
+<div class="docs-layout">
+  <aside id="sidebar" class="sidebar"><div class="version">v0.3 <span>Development</span></div>
+    <nav aria-label="Documentation"><p class="nav-section">Start here</p>
+<a href="index.html">Overview</a>
+<a href="install.html" aria-current="page">Installation</a>
+<a href="platforms.html">Mac &amp; Linux</a>
+<p class="nav-section">Use Target Reaper</p>
+<a href="usage.html">Common workflows</a>
+<a href="cli.html">CLI reference</a>
+<a href="safety.html">Safety &amp; authorization</a>
+<a href="automation.html">Automation</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<p class="nav-section">Build &amp; contribute</p>
+<a href="architecture.html">Architecture</a>
+<a href="development.html">Development</a>
+<a href="releases.html">Release packages</a></nav>
+    <div class="sidebar-note">Preview first.<br>Authorize cleanup deliberately.</div>
+  </aside>
+  <main id="content" class="article" tabindex="-1"><div class="eyebrow">Start here / Documentation</div>
+    <h1 id="installation">Installation</h1>
+<p>Build Target Reaper natively on the platform where you will run it. The primary packaging targets are Apple-silicon macOS and x86-64 Linux.</p>
+<h2 id="requirements">Requirements</h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rust 1.99.1 through rustup</td>
+<td>Compiler pinned by <code>rust-toolchain.toml</code></td>
+</tr>
+<tr>
+<td>C toolchain/linker</td>
+<td>Native dependencies and final linking</td>
+</tr>
+<tr>
+<td>Git</td>
+<td>Repository/worktree operations and fixtures</td>
+</tr>
+<tr>
+<td>GNU <code>timeout</code></td>
+<td>Bounded external commands</td>
+</tr>
+<tr>
+<td>Native <code>jj</code>, for JJ cleanup</td>
+<td>Workspace inspection and exact-name operations</td>
+</tr>
+</tbody>
+</table>
+<p>Use the pinned compiler. Do not set <code>RUSTC_BOOTSTRAP</code> or remove the wrapper to work around build failures.</p>
+<h2 id="macos">macOS</h2>
+<p>Install Apple's command-line tools if missing. With Homebrew available:</p>
+<pre><code class="language-sh">brew install git coreutils
+brew install jj # optional unless you use JJ workspace cleanup
+export PATH=&quot;$(brew --prefix coreutils)/libexec/gnubin:$PATH&quot;
+timeout --version
+git --version
+jj --version # when JJ support is required
+</code></pre>
+<p>Homebrew supplies GNU <code>timeout</code> as <code>gtimeout</code> and inside its <code>gnubin</code> directory. Derive the actual prefix with <code>brew --prefix coreutils</code>; Apple-silicon and Intel Homebrew installations use different prefixes.</p>
+<p>Mac cleanup uses native <code>lsof</code>, mount information and descriptor-relative filesystem operations. Required capability evidence must be available and complete before eligible cleanup proceeds.</p>
+<h2 id="linux">Linux</h2>
+<p>Debian/Ubuntu:</p>
+<pre><code class="language-sh">sudo apt-get update
+sudo apt-get install build-essential git coreutils pkg-config
+</code></pre>
+<p>Arch Linux:</p>
+<pre><code class="language-sh">sudo pacman -S --needed base-devel git coreutils pkgconf
+</code></pre>
+<p>Install native <code>jj</code> if needed. Verify that <code>timeout --version</code> identifies GNU coreutils. Linux process/filesystem checks depend on the native kernel and visible process information.</p>
+<h2 id="compile-the-checkout">Compile the checkout</h2>
+<p>The current Mac compatibility corrections are on <code>fix/macos-main-8e73fe0</code>, based on <code>main</code> at <code>8e73fe0</code>, pending integration. Use that branch for the verified development snapshot.</p>
+<pre><code class="language-sh">git clone --branch fix/macos-main-8e73fe0 https://github.com/lprior-repo/target-reaper.git
+cd target-reaper
+rustup show active-toolchain
+cargo build --release --locked
+./target/release/target-reaper --version
+</code></pre>
+<p>The source repository is private. Clone and release downloads require an authorized account; access to public documentation does not grant source access.</p>
+<h2 id="install-for-your-user">Install for your user</h2>
+<pre><code class="language-sh">cargo install --path . --locked
+command -v target-reaper
+target-reaper --version
+</code></pre>
+<p>Ensure Cargo's bin directory is on your <code>PATH</code>. Installing the binary does not schedule cleanup. Review a narrow preview before using execution or <a href="automation.html">automation</a>.</p>
+<h2 id="archives">Archives</h2>
+<p>Choose the archive matching your OS/architecture, check its SHA-256 manifest, and inspect its build provenance. See <a href="releases.html">release packaging</a>. An archive's existence does not prove that native tests passed for its commit.</p>
+
+    <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="index.html"><small>Previous</small><span>Overview ←</span></a><a class="pager-next" href="platforms.html"><small>Next</small><span>Mac &amp; Linux →</span></a></nav>
+    <footer>Source snapshot <code>0494adc</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+  </main>
+  <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h2" href="#requirements">Requirements</a><a class="toc-h2" href="#macos">macOS</a><a class="toc-h2" href="#linux">Linux</a><a class="toc-h2" href="#compile-the-checkout">Compile the checkout</a><a class="toc-h2" href="#install-for-your-user">Install for your user</a><a class="toc-h2" href="#archives">Archives</a></aside>
+</div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
+</body></html>

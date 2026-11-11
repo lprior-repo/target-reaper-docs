@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Development · Target Reaper DevDocs</title>
+<meta name="description" content="Target Reaper developer documentation: native Mac/Linux setup, cleanup authorization, CLI reference and verification.">
+<link rel="canonical" href="https://lprior-repo.github.io/target-reaper-docs/development.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/docs.css"><script src="assets/docs.js" defer></script>
+</head><body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">tr<span>_</span></span><span>Target Reaper <small>DevDocs</small></span></a>
+  <div class="search-wrap"><label class="sr-only" for="docs-search">Search documentation</label>
+    <input id="docs-search" type="search" placeholder="Search documentation…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+    <kbd aria-hidden="true">/</kbd><div id="search-results" class="search-results" hidden></div>
+  </div>
+  <a class="source-link" href="https://github.com/lprior-repo/target-reaper">Source <span aria-hidden="true">↗</span><small>private repo</small></a>
+  <button id="menu-toggle" class="menu-toggle" aria-controls="sidebar" aria-expanded="false">Menu</button>
+</header>
+<div class="docs-layout">
+  <aside id="sidebar" class="sidebar"><div class="version">v0.3 <span>Development</span></div>
+    <nav aria-label="Documentation"><p class="nav-section">Start here</p>
+<a href="index.html">Overview</a>
+<a href="install.html">Installation</a>
+<a href="platforms.html">Mac &amp; Linux</a>
+<p class="nav-section">Use Target Reaper</p>
+<a href="usage.html">Common workflows</a>
+<a href="cli.html">CLI reference</a>
+<a href="safety.html">Safety &amp; authorization</a>
+<a href="automation.html">Automation</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<p class="nav-section">Build &amp; contribute</p>
+<a href="architecture.html">Architecture</a>
+<a href="development.html" aria-current="page">Development</a>
+<a href="releases.html">Release packages</a></nav>
+    <div class="sidebar-note">Preview first.<br>Authorize cleanup deliberately.</div>
+  </aside>
+  <main id="content" class="article" tabindex="-1"><div class="eyebrow">Build &amp; contribute / Documentation</div>
+    <h1 id="development-and-verification">Development and verification</h1>
+<p>Use an owned disposable checkout and fixture roots. Never point tests or an unverified build at personal repositories, home directories or real cleanup data.</p>
+<h2 id="compiler-policy">Compiler policy</h2>
+<p><code>rust-toolchain.toml</code> pins Rust 1.99.1 with rustfmt, Clippy and LLVM tools. Stable Rust rejects unstable feature attributes. For an explicitly selected nightly/dev compiler, <code>.cargo/strict-rustc.sh</code> enforces exactly <code>portable_simd,try_blocks</code>, rejects conflicts and covers dependency compiler probes.</p>
+<p><code>RUSTC_BOOTSTRAP</code> is rejected. Toolchain and policy changes are reviewable changes, not dependency workarounds.</p>
+<h2 id="fast-checks">Fast checks</h2>
+<pre><code class="language-sh">python3 .cargo/test_strict_rustc.py
+cargo fmt --check
+cargo check --workspace --all-targets --all-features --locked
+cargo clippy --workspace --lib --bins --examples --all-features --locked -- -D warnings
+</code></pre>
+<p>All-targets checking compiles tests, examples and benches; it does not execute Criterion benchmarks. Strict source linting is separate from test implementation style.</p>
+<h2 id="fixture-tests">Fixture tests</h2>
+<p>Install <code>cargo-nextest</code> from its official distribution, then:</p>
+<pre><code class="language-sh">CARGO_BUILD_JOBS=2 cargo nextest run --workspace --lib --tests \
+  --all-features --locked --test-threads 2 --no-fail-fast
+</code></pre>
+<p>Use isolated <code>HOME</code>/<code>TMPDIR</code>, isolated VCS config, no network during execution, and writes limited to owned fixtures/build output. Keep foreign jobs intact. Resource supervision must confirm exit/reap and owned descendant closure.</p>
+<p>Do not walk live fixture candidates to measure space: the monitor's directory descriptors can correctly trigger activity retention. Record owned build-cache growth separately from shared-volume changes, while preserving the shared free-space floor.</p>
+<p>For constrained builds, disable debug symbols and incremental output without disabling runtime assertions or overflow checks:</p>
+<pre><code class="language-sh">CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 \
+  CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 \
+  cargo nextest run --workspace --lib --tests --all-features --locked --test-threads 2
+</code></pre>
+<p>Declare budgets before execution. Stopped or partial runs remain incomplete, and cache reuse does not turn them into passing evidence.</p>
+<h2 id="native-os-coverage">Native OS coverage</h2>
+<p>Run Mac fixtures on macOS and Linux fixtures on Linux. Target checks do not validate another kernel's process/filesystem behavior. Do not substitute Docker/VM execution when a task requires an authorized native executor.</p>
+<p><code>test-plan.md</code>, <code>test-plan-review.md</code> and <code>test-suite-review.md</code> record broader contracts and historical evidence. Read their commit/scope and blocked cases before interpreting counts.</p>
+<h2 id="assurance-checks">Assurance checks</h2>
+<p>Tools include audit, deny, vet, geiger, machete, feature combinations and scoped mutations. Preserve real exit statuses and output. The checked-in Cargo license policy accepts MIT, Apache-2.0 and Unicode-3.0 for normal/build dependencies.</p>
+<p>Do not add blanket exemptions or invent audits. Vet imports, publisher attestations and criteria need approved provenance before coverage can be claimed. Mutation inventories are candidates, not execution: require a baseline and classify caught, missed, unviable and interrupted outcomes.</p>
+<h2 id="build-these-docs">Build these docs</h2>
+<p>Python 3.10 or newer is required:</p>
+<pre><code class="language-sh">python3 -m venv .venv-docs
+.venv-docs/bin/pip install -r docs/requirements.txt
+.venv-docs/bin/python scripts/build_docs.py --output target/devdocs
+.venv-docs/bin/python scripts/check_docs.py target/devdocs
+python3 -m http.server 8000 --directory target/devdocs
+</code></pre>
+<p>The public site contains documentation only. It does not make the private source repository or release assets public.</p>
+
+    <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="architecture.html"><small>Previous</small><span>Architecture ←</span></a><a class="pager-next" href="releases.html"><small>Next</small><span>Release packages →</span></a></nav>
+    <footer>Source snapshot <code>0494adc</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+  </main>
+  <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h2" href="#compiler-policy">Compiler policy</a><a class="toc-h2" href="#fast-checks">Fast checks</a><a class="toc-h2" href="#fixture-tests">Fixture tests</a><a class="toc-h2" href="#native-os-coverage">Native OS coverage</a><a class="toc-h2" href="#assurance-checks">Assurance checks</a><a class="toc-h2" href="#build-these-docs">Build these docs</a></aside>
+</div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
+</body></html>

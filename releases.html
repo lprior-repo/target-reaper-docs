@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Release packages · Target Reaper DevDocs</title>
+<meta name="description" content="Target Reaper developer documentation: native Mac/Linux setup, cleanup authorization, CLI reference and verification.">
+<link rel="canonical" href="https://lprior-repo.github.io/target-reaper-docs/releases.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/docs.css"><script src="assets/docs.js" defer></script>
+</head><body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">tr<span>_</span></span><span>Target Reaper <small>DevDocs</small></span></a>
+  <div class="search-wrap"><label class="sr-only" for="docs-search">Search documentation</label>
+    <input id="docs-search" type="search" placeholder="Search documentation…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+    <kbd aria-hidden="true">/</kbd><div id="search-results" class="search-results" hidden></div>
+  </div>
+  <a class="source-link" href="https://github.com/lprior-repo/target-reaper">Source <span aria-hidden="true">↗</span><small>private repo</small></a>
+  <button id="menu-toggle" class="menu-toggle" aria-controls="sidebar" aria-expanded="false">Menu</button>
+</header>
+<div class="docs-layout">
+  <aside id="sidebar" class="sidebar"><div class="version">v0.3 <span>Development</span></div>
+    <nav aria-label="Documentation"><p class="nav-section">Start here</p>
+<a href="index.html">Overview</a>
+<a href="install.html">Installation</a>
+<a href="platforms.html">Mac &amp; Linux</a>
+<p class="nav-section">Use Target Reaper</p>
+<a href="usage.html">Common workflows</a>
+<a href="cli.html">CLI reference</a>
+<a href="safety.html">Safety &amp; authorization</a>
+<a href="automation.html">Automation</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<p class="nav-section">Build &amp; contribute</p>
+<a href="architecture.html">Architecture</a>
+<a href="development.html">Development</a>
+<a href="releases.html" aria-current="page">Release packages</a></nav>
+    <div class="sidebar-note">Preview first.<br>Authorize cleanup deliberately.</div>
+  </aside>
+  <main id="content" class="article" tabindex="-1"><div class="eyebrow">Build &amp; contribute / Documentation</div>
+    <h1 id="mac-and-linux-packages">Mac and Linux packages</h1>
+<p>Build each package on its native OS, validate the exact source commit, then package the binary. Packaging does not run tests and does not certify a release.</p>
+<h2 id="platform-specific-builds">Platform-specific builds</h2>
+<p>On Apple-silicon macOS:</p>
+<pre><code class="language-sh">cargo build --release --locked --target aarch64-apple-darwin
+python3 scripts/package_release.py \
+  --binary target/aarch64-apple-darwin/release/target-reaper \
+  --target aarch64-apple-darwin --output target/packages
+</code></pre>
+<p>On x86-64 Linux:</p>
+<pre><code class="language-sh">cargo build --release --locked --target x86_64-unknown-linux-gnu
+python3 scripts/package_release.py \
+  --binary target/x86_64-unknown-linux-gnu/release/target-reaper \
+  --target x86_64-unknown-linux-gnu --output target/packages
+</code></pre>
+<p>The packager checks the executable's OS/architecture header, records binary and source fingerprints, and creates an archive plus checksum manifest. Its default label is <code>development</code>; use a release label only as part of an actually verified release process.</p>
+<h2 id="package-contents">Package contents</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>target-reaper</code></td>
+<td>Native executable for the named target</td>
+</tr>
+<tr>
+<td><code>BUILD.json</code></td>
+<td>Commit, dirty-source state, source fingerprint, binary hash and package target</td>
+</tr>
+<tr>
+<td><code>INSTALL.md</code></td>
+<td>Installation and documentation link</td>
+</tr>
+<tr>
+<td><code>SHA256SUMS</code></td>
+<td>Checksums for packaged files</td>
+</tr>
+</tbody>
+</table>
+<p>The archive also receives a sidecar <code>.sha256</code> checksum. The <code>packaging_checkout_commit</code>, <code>packaging_checkout_dirty</code> and <code>packaging_checkout_source_sha256</code> fields describe the checkout used for packaging. They do not by themselves prove which source produced the supplied binary. <code>build_binding</code> defaults to <strong>Unverified</strong>. Passing <code>--verification-receipt PATH</code> requires matching source, binary, target and passing native-test evidence, records the receipt/test-log hashes, and labels the relationship as local evidence rather than a signed attestation. An older tag or an artifact uploaded by a workflow must not be presented as a verified current-head build without its native test evidence.</p>
+<h2 id="verify-before-installing">Verify before installing</h2>
+<p>On macOS, use <code>shasum -a 256 ARCHIVE.tar.gz</code>. On Linux, use <code>sha256sum ARCHIVE.tar.gz</code>. Compare the result to the sidecar checksum from the same trusted release.</p>
+<p>Inspect <code>BUILD.json</code> after extraction, confirm the target matches your machine, then install for your user:</p>
+<pre><code class="language-sh">install -d &quot;$HOME/.local/bin&quot;
+install -m 755 target-reaper &quot;$HOME/.local/bin/target-reaper&quot;
+&quot;$HOME/.local/bin/target-reaper&quot; --version
+</code></pre>
+<p>Unsigned development Mac binaries are not notarized applications. A binary that runs on the verification Mac is not automatically certified for all older macOS versions.</p>
+<h2 id="distribution-boundary">Distribution boundary</h2>
+<p>The source repository and its release assets are private. Public documentation does not grant download access. No new production release is claimed until the matching Mac and Linux artifacts and required verification actually exist.</p>
+<h2 id="prepared-native-build-workflow">Prepared native build workflow</h2>
+<p><code>.github/workflows/native-versions.yml</code> targets <code>macos-15</code> on ARM64 and <code>ubuntu-24.04</code> on x86-64. It uses official checksum-pinned native test tools, a read-only token, one build job and two test threads. It produces development archives only after its native checks pass.</p>
+<p>Hosted runners are VMs. Where a task forbids VM substitution, obtain explicit approval before using them. The workflow stays gated until a manual dispatch explicitly approves hosted runners, or an authorized same-repository PR receives the <code>native-runners-approved</code> label. A skipped job is not a passing verification result.</p>
+<p>Jobs have a 20-minute outer limit; individual monitored stages stop at 1 GiB sampled owned RSS, 2 GiB build cache, a 4 GiB free-space floor, low available memory or the 15-minute stage watchdog. The build-cache limit counts the full owned cache, not a reset baseline between stages. macOS also uses the native write/network sandbox; Linux uses a dedicated disposable runner with isolated fixture HOME/TMPDIR and VCS configuration.</p>
+<p>This workflow does not waive vet provenance, dependency policy or other release-assurance obligations. Workflow artifacts are not automatically published as production releases.</p>
+
+    <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="development.html"><small>Previous</small><span>Development ←</span></a></nav>
+    <footer>Source snapshot <code>0494adc</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+  </main>
+  <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h2" href="#platform-specific-builds">Platform-specific builds</a><a class="toc-h2" href="#package-contents">Package contents</a><a class="toc-h2" href="#verify-before-installing">Verify before installing</a><a class="toc-h2" href="#distribution-boundary">Distribution boundary</a><a class="toc-h2" href="#prepared-native-build-workflow">Prepared native build workflow</a></aside>
+</div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
+</body></html>

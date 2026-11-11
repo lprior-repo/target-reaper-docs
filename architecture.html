@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Architecture · Target Reaper DevDocs</title>
+<meta name="description" content="Target Reaper developer documentation: native Mac/Linux setup, cleanup authorization, CLI reference and verification.">
+<link rel="canonical" href="https://lprior-repo.github.io/target-reaper-docs/architecture.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/docs.css"><script src="assets/docs.js" defer></script>
+</head><body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">tr<span>_</span></span><span>Target Reaper <small>DevDocs</small></span></a>
+  <div class="search-wrap"><label class="sr-only" for="docs-search">Search documentation</label>
+    <input id="docs-search" type="search" placeholder="Search documentation…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+    <kbd aria-hidden="true">/</kbd><div id="search-results" class="search-results" hidden></div>
+  </div>
+  <a class="source-link" href="https://github.com/lprior-repo/target-reaper">Source <span aria-hidden="true">↗</span><small>private repo</small></a>
+  <button id="menu-toggle" class="menu-toggle" aria-controls="sidebar" aria-expanded="false">Menu</button>
+</header>
+<div class="docs-layout">
+  <aside id="sidebar" class="sidebar"><div class="version">v0.3 <span>Development</span></div>
+    <nav aria-label="Documentation"><p class="nav-section">Start here</p>
+<a href="index.html">Overview</a>
+<a href="install.html">Installation</a>
+<a href="platforms.html">Mac &amp; Linux</a>
+<p class="nav-section">Use Target Reaper</p>
+<a href="usage.html">Common workflows</a>
+<a href="cli.html">CLI reference</a>
+<a href="safety.html">Safety &amp; authorization</a>
+<a href="automation.html">Automation</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<p class="nav-section">Build &amp; contribute</p>
+<a href="architecture.html" aria-current="page">Architecture</a>
+<a href="development.html">Development</a>
+<a href="releases.html">Release packages</a></nav>
+    <div class="sidebar-note">Preview first.<br>Authorize cleanup deliberately.</div>
+  </aside>
+  <main id="content" class="article" tabindex="-1"><div class="eyebrow">Build &amp; contribute / Documentation</div>
+    <h1 id="architecture">Architecture</h1>
+<p>One policy engine, two native platform implementations.</p>
+<h2 id="flow">Flow</h2>
+<pre><code class="language-text">CLI configuration
+  → bounded discovery and classification
+  → typed eligibility / retention decisions
+  → final metadata and process revalidation
+  → explicitly authorized native removal
+  → category counters and retained reasons
+</code></pre>
+<p>Discovery supplies facts; eligibility decides what may proceed. Actions own filesystem and repository effects. A scan is not an irrevocable deletion plan.</p>
+<h2 id="module-map">Module map</h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Modules</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Orchestration</td>
+<td><code>main</code>, <code>config</code>, <code>actions</code></td>
+<td>Authorization, shared lock, ordering and reporting</td>
+</tr>
+<tr>
+<td>Discovery</td>
+<td><code>parallel_walk</code>, <code>calc</code>, <code>artifacts</code></td>
+<td>Bounded traversal, facts and generated-artifact scope</td>
+</tr>
+<tr>
+<td>Git facts</td>
+<td><code>native_git</code>, <code>worktree_discovery</code>, <code>worktree_model</code></td>
+<td>Native library state and typed registrations/revisions</td>
+</tr>
+<tr>
+<td>Integration authority</td>
+<td><code>repository_base</code>, <code>branches</code>, <code>branch_model</code></td>
+<td>Pinned main/master basis and branch eligibility</td>
+</tr>
+<tr>
+<td>JJ state</td>
+<td><code>jj_guard</code>, <code>jj_workspace_discovery</code>, <code>jj_workspace_discard</code></td>
+<td>Ownership, membership, stores and exact-name operations</td>
+</tr>
+<tr>
+<td>Removal</td>
+<td><code>cleanup</code>, <code>prune</code>, <code>prune_fs</code>, <code>prune_activity</code></td>
+<td>Final checks, no-follow traversal and explicit deletion</td>
+</tr>
+<tr>
+<td>OS evidence</td>
+<td><code>platform_fs</code>, <code>platform_macos</code>, <code>platform_macos_parse</code></td>
+<td>Native handles, activity and mount snapshots</td>
+</tr>
+<tr>
+<td>Retention/recovery</td>
+<td><code>worktree_missing</code>, <code>worktree_generated</code>, <code>workspace_activity</code>, <code>retention</code></td>
+<td>Private metadata, generated-cache authorization and retained reasons</td>
+</tr>
+</tbody>
+</table>
+<h2 id="native-repository-state">Native repository state</h2>
+<p>Current development uses <code>gix</code> and <code>jj-lib</code> for native repository facts. Bounded external Git/JJ commands remain where the workflow requires them. CLI and library versions both belong in the verification record.</p>
+<h2 id="concurrency-and-accounting">Concurrency and accounting</h2>
+<p>Discovery and review use bounded queues and worker pools. Execution revalidates facts at effect boundaries. Counters separate physical workspaces and logical bytes from registrations and branch operations.</p>
+<p>Performance claims require measurements for the workload in question. A faster scan is not a stronger atomicity or recoverability guarantee.</p>
+
+    <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="troubleshooting.html"><small>Previous</small><span>Troubleshooting ←</span></a><a class="pager-next" href="development.html"><small>Next</small><span>Development →</span></a></nav>
+    <footer>Source snapshot <code>0494adc</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+  </main>
+  <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h2" href="#flow">Flow</a><a class="toc-h2" href="#module-map">Module map</a><a class="toc-h2" href="#native-repository-state">Native repository state</a><a class="toc-h2" href="#concurrency-and-accounting">Concurrency and accounting</a></aside>
+</div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
+</body></html>

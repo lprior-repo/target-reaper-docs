@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Automation · Target Reaper DevDocs</title>
+<meta name="description" content="Target Reaper developer documentation: native Mac/Linux setup, cleanup authorization, CLI reference and verification.">
+<link rel="canonical" href="https://lprior-repo.github.io/target-reaper-docs/automation.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/docs.css"><script src="assets/docs.js" defer></script>
+</head><body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">tr<span>_</span></span><span>Target Reaper <small>DevDocs</small></span></a>
+  <div class="search-wrap"><label class="sr-only" for="docs-search">Search documentation</label>
+    <input id="docs-search" type="search" placeholder="Search documentation…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+    <kbd aria-hidden="true">/</kbd><div id="search-results" class="search-results" hidden></div>
+  </div>
+  <a class="source-link" href="https://github.com/lprior-repo/target-reaper">Source <span aria-hidden="true">↗</span><small>private repo</small></a>
+  <button id="menu-toggle" class="menu-toggle" aria-controls="sidebar" aria-expanded="false">Menu</button>
+</header>
+<div class="docs-layout">
+  <aside id="sidebar" class="sidebar"><div class="version">v0.3 <span>Development</span></div>
+    <nav aria-label="Documentation"><p class="nav-section">Start here</p>
+<a href="index.html">Overview</a>
+<a href="install.html">Installation</a>
+<a href="platforms.html">Mac &amp; Linux</a>
+<p class="nav-section">Use Target Reaper</p>
+<a href="usage.html">Common workflows</a>
+<a href="cli.html">CLI reference</a>
+<a href="safety.html">Safety &amp; authorization</a>
+<a href="automation.html" aria-current="page">Automation</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<p class="nav-section">Build &amp; contribute</p>
+<a href="architecture.html">Architecture</a>
+<a href="development.html">Development</a>
+<a href="releases.html">Release packages</a></nav>
+    <div class="sidebar-note">Preview first.<br>Authorize cleanup deliberately.</div>
+  </aside>
+  <main id="content" class="article" tabindex="-1"><div class="eyebrow">Use Target Reaper / Documentation</div>
+    <h1 id="automation-on-mac-and-linux">Automation on Mac and Linux</h1>
+<p>Schedule only a command you have reviewed manually. The examples here run previews. Adding <code>--execute</code> changes their authority and must be an intentional local decision.</p>
+<p>Use the same lock path for scheduled and manual runs. Native command lookup must work in the scheduler's environment; interactive shell startup files may not be loaded.</p>
+<h2 id="macos-launchd">macOS: launchd</h2>
+<p>Create a user LaunchAgent only after replacing every <code>/Users/YOU</code> path below with an absolute path for your account. launchd does not expand <code>$HOME</code> inside <code>ProgramArguments</code>.</p>
+<pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE plist PUBLIC &quot;-//Apple//DTD PLIST 1.0//EN&quot; &quot;http://www.apple.com/DTDs/PropertyList-1.0.dtd&quot;&gt;
+&lt;plist version=&quot;1.0&quot;&gt;&lt;dict&gt;
+  &lt;key&gt;Label&lt;/key&gt;&lt;string&gt;local.target-reaper.preview&lt;/string&gt;
+  &lt;key&gt;ProgramArguments&lt;/key&gt;&lt;array&gt;
+    &lt;string&gt;/Users/YOU/.cargo/bin/target-reaper&lt;/string&gt;
+    &lt;string&gt;--root&lt;/string&gt;&lt;string&gt;/Users/YOU/src&lt;/string&gt;
+    &lt;string&gt;--age-days&lt;/string&gt;&lt;string&gt;7&lt;/string&gt;
+    &lt;string&gt;--min-size&lt;/string&gt;&lt;string&gt;100M&lt;/string&gt;
+    &lt;string&gt;--list&lt;/string&gt;
+  &lt;/array&gt;
+  &lt;key&gt;EnvironmentVariables&lt;/key&gt;&lt;dict&gt;
+    &lt;key&gt;PATH&lt;/key&gt;&lt;string&gt;/opt/homebrew/opt/coreutils/libexec/gnubin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin&lt;/string&gt;
+  &lt;/dict&gt;
+  &lt;key&gt;StartInterval&lt;/key&gt;&lt;integer&gt;86400&lt;/integer&gt;
+  &lt;key&gt;StandardOutPath&lt;/key&gt;&lt;string&gt;/Users/YOU/Library/Logs/target-reaper-preview.log&lt;/string&gt;
+  &lt;key&gt;StandardErrorPath&lt;/key&gt;&lt;string&gt;/Users/YOU/Library/Logs/target-reaper-preview.err&lt;/string&gt;
+&lt;/dict&gt;&lt;/plist&gt;
+</code></pre>
+<p>Adjust the Homebrew prefix on Intel Macs. Save the file as <code>~/Library/LaunchAgents/local.target-reaper.preview.plist</code>, validate it, then explicitly load it:</p>
+<pre><code class="language-sh">plutil -lint &quot;$HOME/Library/LaunchAgents/local.target-reaper.preview.plist&quot;
+launchctl bootstrap &quot;gui/$(id -u)&quot; &quot;$HOME/Library/LaunchAgents/local.target-reaper.preview.plist&quot;
+</code></pre>
+<p>To stop the schedule:</p>
+<pre><code class="language-sh">launchctl bootout &quot;gui/$(id -u)&quot; &quot;$HOME/Library/LaunchAgents/local.target-reaper.preview.plist&quot;
+</code></pre>
+<h2 id="linux-systemd-user-timer">Linux: systemd user timer</h2>
+<p><code>~/.config/systemd/user/target-reaper-preview.service</code>:</p>
+<pre><code class="language-ini">[Unit]
+Description=Preview stale Rust build artifacts
+
+[Service]
+Type=oneshot
+ExecStart=%h/.cargo/bin/target-reaper --root %h/src --age-days 7 --min-size 100M --list
+</code></pre>
+<p><code>~/.config/systemd/user/target-reaper-preview.timer</code>:</p>
+<pre><code class="language-ini">[Unit]
+Description=Daily Target Reaper preview
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+</code></pre>
+<p>After reviewing the files:</p>
+<pre><code class="language-sh">systemctl --user daemon-reload
+systemctl --user enable --now target-reaper-preview.timer
+systemctl --user status target-reaper-preview.timer
+journalctl --user -u target-reaper-preview.service
+</code></pre>
+<p>To stop it, use <code>systemctl --user disable --now target-reaper-preview.timer</code>.</p>
+<h2 id="before-authorizing-scheduled-deletion">Before authorizing scheduled deletion</h2>
+<p>Review the exact roots, age, size, exclusions, lock path and category flags. Confirm that scheduler logs are readable and retained. A daily schedule does not justify <code>--discard-stale-workspaces</code> or broad per-file scope.</p>
+<p>Installing the binary or building these docs does not create any schedule. No cleanup service is enabled by this repository automatically.</p>
+
+    <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="safety.html"><small>Previous</small><span>Safety &amp; authorization ←</span></a><a class="pager-next" href="troubleshooting.html"><small>Next</small><span>Troubleshooting →</span></a></nav>
+    <footer>Source snapshot <code>0494adc</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+  </main>
+  <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h2" href="#macos-launchd">macOS: launchd</a><a class="toc-h2" href="#linux-systemd-user-timer">Linux: systemd user timer</a><a class="toc-h2" href="#before-authorizing-scheduled-deletion">Before authorizing scheduled deletion</a></aside>
+</div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
+</body></html>

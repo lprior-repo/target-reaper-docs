@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Safety &amp; authorization · Target Reaper DevDocs</title>
+<meta name="description" content="Target Reaper developer documentation: native Mac/Linux setup, cleanup authorization, CLI reference and verification.">
+<link rel="canonical" href="https://lprior-repo.github.io/target-reaper-docs/safety.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/docs.css"><script src="assets/docs.js" defer></script>
+</head><body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">tr<span>_</span></span><span>Target Reaper <small>DevDocs</small></span></a>
+  <div class="search-wrap"><label class="sr-only" for="docs-search">Search documentation</label>
+    <input id="docs-search" type="search" placeholder="Search documentation…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+    <kbd aria-hidden="true">/</kbd><div id="search-results" class="search-results" hidden></div>
+  </div>
+  <a class="source-link" href="https://github.com/lprior-repo/target-reaper">Source <span aria-hidden="true">↗</span><small>private repo</small></a>
+  <button id="menu-toggle" class="menu-toggle" aria-controls="sidebar" aria-expanded="false">Menu</button>
+</header>
+<div class="docs-layout">
+  <aside id="sidebar" class="sidebar"><div class="version">v0.3 <span>Development</span></div>
+    <nav aria-label="Documentation"><p class="nav-section">Start here</p>
+<a href="index.html">Overview</a>
+<a href="install.html">Installation</a>
+<a href="platforms.html">Mac &amp; Linux</a>
+<p class="nav-section">Use Target Reaper</p>
+<a href="usage.html">Common workflows</a>
+<a href="cli.html">CLI reference</a>
+<a href="safety.html" aria-current="page">Safety &amp; authorization</a>
+<a href="automation.html">Automation</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<p class="nav-section">Build &amp; contribute</p>
+<a href="architecture.html">Architecture</a>
+<a href="development.html">Development</a>
+<a href="releases.html">Release packages</a></nav>
+    <div class="sidebar-note">Preview first.<br>Authorize cleanup deliberately.</div>
+  </aside>
+  <main id="content" class="article" tabindex="-1"><div class="eyebrow">Use Target Reaper / Documentation</div>
+    <h1 id="safety-and-authorization">Safety and authorization</h1>
+<p>Start with a narrow root and review a preview before enabling execution. Target Reaper cannot recover deleted data or provide atomic protection against hostile concurrent writers.</p>
+<p>Each target scan captures one timestamp, one age cutoff, and one process snapshot covering visible executables, working directories, open files and mapped files. Linux uses <code>/proc</code> and <code>openat2</code>. macOS uses native <code>lsof</code> and <code>mount</code> capabilities plus descriptor-relative no-follow traversal, device/mount checks and descriptor path revalidation. macOS protects other processes working inside a project as well as identified Cargo workspace ancestors. Missing tools, warnings, incomplete snapshots and ambiguous native path output fail closed; macOS retries incomplete process snapshots at most three times. Its directory reads may update access times because macOS lacks Linux’s per-open <code>O_NOATIME</code>. Native path bytes and kernel-escaped map paths are preserved. Preview and execution apply these activity guards; execution takes a fresh snapshot before revalidating targets. A target is stale iff its strict scan observes no regular file under that target with <code>mtime &gt;= cutoff</code>.</p>
+<p>The age cutoff stays fixed throughout a pass. Metadata newer than the scan start is checked against the time it is observed: ordinary writes during a scan are fresh, not clock skew. Genuinely future-dated metadata still fails closed.</p>
+<p>The library's <code>scan_roots</code> result carries this boundary in <code>ScanResult.cutoff</code>. Both <code>delete_stale</code> and <code>delete_stale_with_config</code> preserve it while refreshing process and mount activity. A later configuration may tighten the age boundary but cannot advance it. Library callers constructing <code>ScanResult</code> directly must supply the cutoff used to authorize staleness.</p>
+<p>Traversal errors are not swallowed. Errors are recorded in the scan result and the CLI exits with code <code>3</code>. By default, independently proven-stale targets may still be deleted when <code>--execute</code> is used. Add <code>--require-clean-scan</code> when you want the stronger policy: any target scan/classification error prevents target deletion. Cache and worktree cleanup use their own conservative checks and report command or traversal failures.</p>
+<p>Git discovery permits at most 10,000,000 raw filesystem entries and 2,000,000 directory checks per root, with depth 128. Ordinary files consume the raw budget but not the directory-check budget. Cache/worktree measurement is limited to 256 levels and 2,000,000 entries; Cargo discovery and target scans to 256 levels and 10,000,000 entries. Per-file plans cap entries at 10,000,000 and directories at 1,000,000. Library walkers cap open directories at 16 each. Discovery-budget failures identify the offending path; exhausted limits fail closed rather than silently authorizing an incomplete tree. Sorted walkers can buffer wide directories, so these are not strict heap-memory guarantees.</p>
+<h3 id="cache-and-worktree-rules">Cache and Worktree Rules</h3>
+<ul>
+<li>Cache cleanup examines only immediate child directories of each explicitly supplied <code>--cache-root</code>. It keeps protected personal/model/Steam paths, non-owned data, symlinks, recent trees, and trees referenced by a visible process. On Linux, individual <code>/proc</code> entries that cannot be inspected are ignored; if <code>/proc</code> itself is unavailable, cleanup fails closed. On macOS, unavailable or incomplete native process/mount capabilities retain candidates. Process visibility is best-effort and can change after the check.</li>
+<li>Worktree cleanup accepts <code>--worktree-repo</code>, <code>--worktree-root</code>, or both. Discovery does not follow symlinks or enter Git/JJ metadata or build payloads. Repositories are deduplicated by their canonical common Git directory; supplying a linked checkout never changes which registration is primary. Protected primary or shared-metadata namespaces retain the repository's worktrees, including registrations outside discovery roots.</li>
+<li>Discovery prunes conventional SDK/package directories (<code>.cargo</code>, <code>.rustup</code>, <code>node_modules</code>, <code>.venv</code>, <code>venv</code>, <code>__pycache__</code>, <code>CMakeFiles</code>) and recognized Cargo output payloads. A verified native Git root overrides a generated directory name; an empty or bogus <code>.git</code> marker does not. Custom output is recognized by a regular <code>.rustc_info.json</code> or a <code>.fingerprint</code> directory plus a regular Cargo lock marker. <code>Cargo.toml</code> and <code>.jj</code> markers prevent structural output classification. Hidden directories, <code>.cache</code>, and <code>.codex</code> are not blanket-excluded; unrecognized payloads remain subject to the explicit traversal limits.</li>
+<li>Integration uses verified <code>main</code> or <code>master</code>, never a feature-named <code>origin/HEAD</code>. With <code>--refresh-worktree-defaults</code>, origin is checked online. Preview retains a repository as <code>needs_fetch</code> when local proof is unavailable; execution fetches only the selected tracking ref with an empty refmap, without <code>--force</code>, tags, submodules, maintenance or <code>FETCH_HEAD</code> replacement. Offline, changed or unverifiable bases are retained. An absent cached <code>origin/HEAD</code> permits normal local fallback. An explicitly untrusted cached target or invalid/unsupported remote advertisement retains only that repository without blocking unrelated repositories; unexpected native-invocation and I/O errors still propagate.</li>
+<li>Under the default <strong>integrated-only</strong> policy, primary, locked, JJ, bare, unborn, protected, recently modified, dirty, unmerged, or process-referenced worktrees are kept. A detached worktree is eligible only when its committed HEAD is an ancestor of the verified integration base. Missing registrations require the separate opt-in below.</li>
+<li>Under that default policy, untracked or ignored files normally keep a worktree, including Cargo <code>target/</code> directories, and artifact cleanup runs first. <code>--allow-generated-worktree-cache</code> permits only ignored <code>.moon/cache/</code> with a valid <code>CACHEDIR.TAG</code> plus inert <code>tools/build-toolchain.json</code> identifying that exact checkout and the expected tool fingerprint. Unknown ignored data stays protected. A symlink's own timestamp contributes to activity checks; its target is not followed or counted.</li>
+<li>Default cleanup refreshes Git identity, registration and HEAD before native <code>git worktree remove</code> without <code>--force</code>; source repositories and JJ stores are not purged.</li>
+<li>Default cleanup also verifies the linked checkout's private Git directory. Absolute and relative native Git backpointers are resolved exactly, without traversing symlinks or interpreting a parent traversal through a missing prefix. Recent or process-referenced metadata, unintegrated recovery revisions, hidden index state, unknown files and unverifiable pointers retain the checkout. A fresh complete private snapshot must match the authorization immediately before removal.</li>
+<li>Preview and execution both check visible activity. Execution repeats eligibility checks; process activity can change after any check.</li>
+<li>The default policy retains worktrees with <code>assume-unchanged</code> or <code>skip-worktree</code> index entries, which can hide uncommitted changes. It reads native <code>git ls-files -v -z</code> output and never rewrites those flags. Explicit discard authorization permits loss of these hidden changes.</li>
+<li><code>--execute</code> applies to every explicitly enabled policy. Without it, targets, caches, files, worktrees, registrations and branches are preview-only.</li>
+<li>Documents, Downloads, Steam, model directories, evidence, backups, snapshots, and project <code>var/</code> trees are protected during root scans.</li>
+</ul>
+<p>Whole-directory deletion uses safe recursive deletion (<code>remove_dir_all</code>). Per-file pruning uses descriptor-relative filesystem operations and revalidates entries before unlinking them.</p>
+<h3 id="age-authorized-workspace-discard">Age-Authorized Workspace Discard</h3>
+<p><code>--discard-stale-workspaces --age-days 1</code> requires every observed file, directory and symlink in the checkout, private Git metadata and local JJ metadata to have <code>mtime</code> strictly older than one fixed 24-hour cutoff. Commit dates and access times do not authorize removal. Directory timestamps count, so recent deletions or renames keep a checkout. Fresh snapshots include inode, device, mode and change time to detect intervening mutations.</p>
+<p>Discard runs before target/cache/per-file cleanup so its own artifact deletion cannot make an otherwise old checkout appear newly active. Target roots are validated before any discard; an explicitly supplied target root removed by that authorized pass is consumed rather than reported as an invalid root afterward.</p>
+<p>Physical ownership, activity, protection and age rejection runs before expensive JJ lease preparation. These rejection reasons take precedence over JJ classification. Eligible removals still repeat the complete activity snapshot and fresh JJ alias/membership checks immediately before mutation; this ordering does not cache away the final safety checks.</p>
+<p>Planning refreshes known JJ markers and relevant native store memberships without repeating the whole-scope alias walk for each candidate. Before every actual removal, the final guard still repeats scoped alias discovery for metadata-owning candidates. A new alias appearing after initial discovery may therefore change a preview candidate into retained execution state.</p>
+<p>Primary Git/JJ roots, nested or shared stores, metadata owners referenced by another workspace, protected personal/model/excluded paths, foreign ownership, mounts and visible process references keep a checkout. Discovery does not follow symlink roots. Scoped JJ aliases and native memberships are verified again before removal; unknown or unsupported identity/registry state is retained. Protections cannot discover arbitrary aliases outside the supplied scopes.</p>
+<p>Ordinary Rust <code>src/model</code> and <code>src/models</code> module directories do not count as model-weight collections merely because of their name. Only directories and regular <code>.rs</code> files qualify for this source-module classification; non-source payloads such as <code>weights.bin</code>, symlinks and other protected prefix/suffix namespaces still retain the whole checkout. Protected checkout-root namespaces are unchanged.</p>
+<p>Present locked Git worktrees may be removed using native double-force removal only after all discard guards pass. Missing locked registrations are retained. Missing Git registrations still require <code>--prune-missing-worktrees</code>, an old verified private directory and fresh absence/identity/activity checks.</p>
+<p>True JJ workspaces use native JSON names and commit IDs, verified store ownership, and an exact snapshot of the authoritative workspace registry. The physical checkout is removed first, then its exact native workspace name is forgotten only after revalidating surviving membership and the registry. If that second step fails, the command exits nonzero and explicitly reports that physical deletion already happened; it does not pretend the operation was rolled back. Preview does not create missing legacy registry files.</p>
+<p>After a physical-removal/forget failure, fix the underlying lock or repository problem and use native exact-name <code>jj workspace forget</code> from the surviving anchor when required. Rerunning the cleaner alone does not automatically repair missing JJ registrations.</p>
+<p>These are bounded, fail-closed checks, not atomic protection against hostile concurrent writers or a promise that unfinished work is recoverable. No service is stopped. Branch deletion remains a separate, merged-only policy even when workspace discard is enabled.</p>
+<h3 id="merged-branches-and-missing-registrations">Merged Branches and Missing Registrations</h3>
+<p><code>--prune-merged-branches</code> requires both a worktree scope and <code>--refresh-worktree-defaults</code>. Only branch tips strictly older than the fixed cutoff and integrated into the pinned main/master are eligible. Defaults, checked-out branches, and commits/parents owned by any scoped JJ workspace are protected. Every scoped repository's current worktree membership is refreshed before application; unreadable JJ state retains branches.</p>
+<p>Ordinary Git branches use <code>git branch -d</code>, never forced deletion. The verified main/master may temporarily become the branch-specific upstream; failed or retained deletion restores the original tracking values. JJ primaries use exact-name <code>jj bookmark forget</code>, not bookmark deletion or push, so this does not schedule remote deletion.</p>
+<p>Under the default policy, <code>--prune-missing-worktrees</code> uses selective native removal, never blanket <code>git worktree prune</code>. It requires an old, trustworthy private Git directory, integrated HEAD and HEAD reflog revisions, and no staged index differences. Optional <code>ORIG_HEAD</code> must name an actual integrated commit, not a tag or other object. An empty native <code>refs</code> directory is allowed; any contained private refs, unknown files, unique recovery state, or changed registration/index/reflog/absence retain the registration. The full private snapshot is checked again before removal. Discard mode changes recovery authorization, not primary/store/age/identity/activity protections.</p>
+<p>Reports separate physical Git worktrees, JJ workspaces and their logical bytes from missing registrations and branch counts. <code>--log</code> includes <code>workspace_policy=integrated-only</code> or <code>workspace_policy=discard-stale</code>, numeric <code>worktrees_*</code>, <code>jj_workspaces_*</code>, <code>stale_worktrees_*</code> and <code>branches_*</code> counters, and fixed category-specific <code>*_retained_REASON</code> counters, including zero values. Reasons remain available with <code>--quiet</code>.</p>
+<p>Ordering and decisions are deterministic for the same mode, configuration and filesystem/Git/JJ/process/remote snapshot. Preview is not a saved execution plan and does not simulate earlier removals: execution can release a branch by first removing its eligible worktree. Native commands have a 60-second timeout plus a 5-second kill grace. Captured output is rejected above 64 MiB after capture; this is not a peak-memory guarantee. Visible-process checks and final metadata revalidation do not make hostile concurrent mutations atomic.</p>
+<p>Preview does not simulate whole-checkout removal: a nested old target can appear in both target and worktree estimates. Do not sum overlapping preview category bytes. Execution counts the actual removal once; an unchanged replay removes nothing further.</p>
+<h3 id="explicit-per-file-pruning">Explicit Per-File Pruning</h3>
+<p><code>--prune-root</code> captures one cutoff at the start of its pruning pass. Only files with <code>mtime &lt; cutoff</code> are eligible; directory timestamps do not make their old contents fresh. Roots and directory entries are ordered deterministically, and duplicate/overlapping roots are counted once. The listing is a preview, not a saved deletion plan: execution rechecks the filesystem and can retain changed or busy roots.</p>
+<p>The mode keeps the protections for personal files, Steam, models, source checkouts, excluded paths, foreign ownership, and mounted filesystems. It refuses symlink roots and never follows symlink entries into their targets. Explicit roots may contain offline evidence, receipts, and backups that broad scans otherwise preserve.</p>
+<p>Any detected executable, working directory, open file, or mapped file under a pruning root keeps the <strong>entire root</strong>, including its old files. This avoids deleting an old database segment while its owner is still running. No service is stopped. Process visibility is best-effort; inaccessible process details and a process starting after a check remain limitations.</p>
+<p>Execution can temporarily grant owner-write permission to owned read-only directories, restoring their original permissions when retained. Dry-run does not change permissions. Empty directories are removed after their eligible files; missing roots are harmless on subsequent runs. Summary/log byte counts are logical file lengths, not physical space reclaimed.</p>
+<p>Deletion or permission-restoration failures stop pruning and return a nonzero exit status; they are not reported as successful cleanup. Concurrent hostile writers remain a limitation: the final metadata check and unlink cannot be one atomic conditional operation.</p>
+<h3 id="automatic-cargo-artifact-pruning">Automatic Cargo Artifact Pruning</h3>
+<p><code>--prune-target-files</code> is narrower authorization than <code>--prune-root</code>: only discovered Cargo targets qualify, and only recognized generated compiler outputs may be removed. It uses the same strict file cutoff, descriptor-relative deletion, exclusions, ownership/mount checks, activity checks and failure reporting as explicit pruning.</p>
+<p>Recent files, nested source projects, corpus/evidence/receipt/backup directories, and database-bearing fixture subtrees are retained. Database markers protect their entire subtree, including journal/manifest/lock/keyspace files and SQLite sidecars, rather than merely preserving selected extensions. Automatic pruning does not remove empty directories, so retained fixture directory metadata is not discarded.</p>
+<p>Without this flag, no new per-file cleanup occurs: whole targets containing recent or protected data remain intact. A completely old, safe target can still be removed as a whole; mixed-age or durable-data-bearing targets use the narrower per-file policy when requested.</p>
+<h3 id="dry-run-vs-execute">Dry-Run vs Execute</h3>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Flag</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dry-run</strong> (default)</td>
+<td><em>(none)</em></td>
+<td>Prints cleanup summaries. <strong>Nothing is deleted.</strong></td>
+</tr>
+<tr>
+<td><strong>Dry-run list</strong></td>
+<td><code>--list</code></td>
+<td>Prints stale paths plus the summary. <strong>Nothing is deleted.</strong></td>
+</tr>
+<tr>
+<td><strong>Execute</strong></td>
+<td><code>-e</code> / <code>--execute</code></td>
+<td>Removes eligible directories and explicitly authorized old files, then prints summaries.</td>
+</tr>
+<tr>
+<td><strong>Execute list</strong></td>
+<td><code>-e --list</code></td>
+<td>Prints deleted paths plus the summary.</td>
+</tr>
+</tbody>
+</table>
+<p>Dry-run is the default because accidentally deleting active build caches is expensive.</p>
+
+    <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="cli.html"><small>Previous</small><span>CLI reference ←</span></a><a class="pager-next" href="automation.html"><small>Next</small><span>Automation →</span></a></nav>
+    <footer>Source snapshot <code>0494adc</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+  </main>
+  <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h3" href="#cache-and-worktree-rules">Cache and Worktree Rules</a><a class="toc-h3" href="#age-authorized-workspace-discard">Age-Authorized Workspace Discard</a><a class="toc-h3" href="#merged-branches-and-missing-registrations">Merged Branches and Missing Registrations</a><a class="toc-h3" href="#explicit-per-file-pruning">Explicit Per-File Pruning</a><a class="toc-h3" href="#automatic-cargo-artifact-pruning">Automatic Cargo Artifact Pruning</a><a class="toc-h3" href="#dry-run-vs-execute">Dry-Run vs Execute</a></aside>
+</div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
+</body></html>

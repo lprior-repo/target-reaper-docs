@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Troubleshooting · Target Reaper DevDocs</title>
+<meta name="description" content="Target Reaper developer documentation: native Mac/Linux setup, cleanup authorization, CLI reference and verification.">
+<link rel="canonical" href="https://lprior-repo.github.io/target-reaper-docs/troubleshooting.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/docs.css"><script src="assets/docs.js" defer></script>
+</head><body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">tr<span>_</span></span><span>Target Reaper <small>DevDocs</small></span></a>
+  <div class="search-wrap"><label class="sr-only" for="docs-search">Search documentation</label>
+    <input id="docs-search" type="search" placeholder="Search documentation…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+    <kbd aria-hidden="true">/</kbd><div id="search-results" class="search-results" hidden></div>
+  </div>
+  <a class="source-link" href="https://github.com/lprior-repo/target-reaper">Source <span aria-hidden="true">↗</span><small>private repo</small></a>
+  <button id="menu-toggle" class="menu-toggle" aria-controls="sidebar" aria-expanded="false">Menu</button>
+</header>
+<div class="docs-layout">
+  <aside id="sidebar" class="sidebar"><div class="version">v0.3 <span>Development</span></div>
+    <nav aria-label="Documentation"><p class="nav-section">Start here</p>
+<a href="index.html">Overview</a>
+<a href="install.html">Installation</a>
+<a href="platforms.html">Mac &amp; Linux</a>
+<p class="nav-section">Use Target Reaper</p>
+<a href="usage.html">Common workflows</a>
+<a href="cli.html">CLI reference</a>
+<a href="safety.html">Safety &amp; authorization</a>
+<a href="automation.html">Automation</a>
+<a href="troubleshooting.html" aria-current="page">Troubleshooting</a>
+<p class="nav-section">Build &amp; contribute</p>
+<a href="architecture.html">Architecture</a>
+<a href="development.html">Development</a>
+<a href="releases.html">Release packages</a></nav>
+    <div class="sidebar-note">Preview first.<br>Authorize cleanup deliberately.</div>
+  </aside>
+  <main id="content" class="article" tabindex="-1"><div class="eyebrow">Use Target Reaper / Documentation</div>
+    <h1 id="troubleshooting">Troubleshooting</h1>
+<h2 id="stable-compiler-rejects-a-nightly-option">Stable compiler rejects a nightly option</h2>
+<p>An older wrapper always added <code>-Zallow-features</code>, even with a stable compiler pin. Update to the compatibility fix and run the wrapper tests. Do not enable <code>RUSTC_BOOTSTRAP</code> or silently remove the nightly allowlist.</p>
+<pre><code class="language-sh">rustup show active-toolchain
+python3 .cargo/test_strict_rustc.py
+</code></pre>
+<h2 id="gnu-timeout-is-unavailable">GNU timeout is unavailable</h2>
+<p>Check <code>timeout --version</code>. On macOS, Homebrew coreutils supplies <code>gtimeout</code> and a <code>gnubin</code> directory. Add the correct path to the shell or scheduled job's environment. launchd may not inherit an interactive shell's <code>PATH</code>.</p>
+<h2 id="macos-retains-an-active-or-unverified-root">macOS retains an active or unverified root</h2>
+<p>An open file, current directory or mapped executable may retain an entire pruning root. Required capability snapshots must also be complete. Close only your own completed fixture handles when testing; do not stop services or remove protection checks to force deletion.</p>
+<p>An inaccessible process or a process starting after the snapshot remains a visibility limit. A snapshot is not an atomic lock on other processes.</p>
+<h2 id="a-worktree-remains">A worktree remains</h2>
+<p>Inspect the category-specific retained reason and selected policy. Missing registrations require their own opt-in. Old build output does not make an unmerged or recovery-bearing checkout eligible.</p>
+<p><code>--discard-stale-workspaces</code> authorizes loss of old unfinished data; do not add it merely to suppress a retained reason.</p>
+<h2 id="jj-version-or-repository-format-mismatch">JJ version or repository-format mismatch</h2>
+<p>Check the native CLI version, locked JJ library version and repository format. Use fixtures created by supported tools. Unreadable membership/store evidence retains workspaces. Do not rewrite a real store for an unverified build.</p>
+<h2 id="a-build-reaches-its-budget">A build reaches its budget</h2>
+<p>Keep the stopped log and closure receipt. Separate build-cache growth from shared-volume changes before choosing a measured next step. Reusing a cache can reduce demand; do not reset counters or increase an approved cap without the required authorization.</p>
+<h2 id="preview-differs-from-execution">Preview differs from execution</h2>
+<p>They capture different live snapshots. Execution can retain changed candidates, or an earlier workspace removal can release a later branch candidate. Preview is not a saved transaction. Review category counters rather than summing overlapping estimates.</p>
+<h2 id="physical-space-differs-from-reported-bytes">Physical space differs from reported bytes</h2>
+<p>Logical lengths do not include sparse allocation, compression, shared blocks or external hard links. Measure filesystem availability independently when physical reclamation matters.</p>
+
+    <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="automation.html"><small>Previous</small><span>Automation ←</span></a><a class="pager-next" href="architecture.html"><small>Next</small><span>Architecture →</span></a></nav>
+    <footer>Source snapshot <code>0494adc</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+  </main>
+  <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h2" href="#stable-compiler-rejects-a-nightly-option">Stable compiler rejects a nightly option</a><a class="toc-h2" href="#gnu-timeout-is-unavailable">GNU timeout is unavailable</a><a class="toc-h2" href="#macos-retains-an-active-or-unverified-root">macOS retains an active or unverified root</a><a class="toc-h2" href="#a-worktree-remains">A worktree remains</a><a class="toc-h2" href="#jj-version-or-repository-format-mismatch">JJ version or repository-format mismatch</a><a class="toc-h2" href="#a-build-reaches-its-budget">A build reaches its budget</a><a class="toc-h2" href="#preview-differs-from-execution">Preview differs from execution</a><a class="toc-h2" href="#physical-space-differs-from-reported-bytes">Physical space differs from reported bytes</a></aside>
+</div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
+</body></html>

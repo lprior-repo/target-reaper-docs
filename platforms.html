@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mac &amp; Linux · Target Reaper DevDocs</title>
+<meta name="description" content="Target Reaper developer documentation: native Mac/Linux setup, cleanup authorization, CLI reference and verification.">
+<link rel="canonical" href="https://lprior-repo.github.io/target-reaper-docs/platforms.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/docs.css"><script src="assets/docs.js" defer></script>
+</head><body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">tr<span>_</span></span><span>Target Reaper <small>DevDocs</small></span></a>
+  <div class="search-wrap"><label class="sr-only" for="docs-search">Search documentation</label>
+    <input id="docs-search" type="search" placeholder="Search documentation…" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+    <kbd aria-hidden="true">/</kbd><div id="search-results" class="search-results" hidden></div>
+  </div>
+  <a class="source-link" href="https://github.com/lprior-repo/target-reaper">Source <span aria-hidden="true">↗</span><small>private repo</small></a>
+  <button id="menu-toggle" class="menu-toggle" aria-controls="sidebar" aria-expanded="false">Menu</button>
+</header>
+<div class="docs-layout">
+  <aside id="sidebar" class="sidebar"><div class="version">v0.3 <span>Development</span></div>
+    <nav aria-label="Documentation"><p class="nav-section">Start here</p>
+<a href="index.html">Overview</a>
+<a href="install.html">Installation</a>
+<a href="platforms.html" aria-current="page">Mac &amp; Linux</a>
+<p class="nav-section">Use Target Reaper</p>
+<a href="usage.html">Common workflows</a>
+<a href="cli.html">CLI reference</a>
+<a href="safety.html">Safety &amp; authorization</a>
+<a href="automation.html">Automation</a>
+<a href="troubleshooting.html">Troubleshooting</a>
+<p class="nav-section">Build &amp; contribute</p>
+<a href="architecture.html">Architecture</a>
+<a href="development.html">Development</a>
+<a href="releases.html">Release packages</a></nav>
+    <div class="sidebar-note">Preview first.<br>Authorize cleanup deliberately.</div>
+  </aside>
+  <main id="content" class="article" tabindex="-1"><div class="eyebrow">Start here / Documentation</div>
+    <h1 id="platforms-and-verification">Platforms and verification</h1>
+<p>Target Reaper supports native Linux and macOS. Other operating systems are rejected at compile time.</p>
+<h2 id="packaging-targets">Packaging targets</h2>
+<table>
+<thead>
+<tr>
+<th>OS / architecture</th>
+<th>Rust target</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Apple-silicon macOS</td>
+<td><code>aarch64-apple-darwin</code></td>
+<td>Primary Mac package</td>
+</tr>
+<tr>
+<td>x86-64 Linux, glibc</td>
+<td><code>x86_64-unknown-linux-gnu</code></td>
+<td>Primary Linux package</td>
+</tr>
+<tr>
+<td>Intel macOS</td>
+<td><code>x86_64-apple-darwin</code></td>
+<td>Source build; separate native verification required</td>
+</tr>
+<tr>
+<td>Other Linux architectures</td>
+<td>Platform-specific target</td>
+<td>Source build; separate native verification required</td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>—</td>
+<td>Unsupported</td>
+</tr>
+</tbody>
+</table>
+<p>Every archive identifies its exact target and commit. macOS and Linux binaries are not interchangeable; glibc and musl Linux targets are also distinct.</p>
+<h2 id="native-capability-boundary">Native capability boundary</h2>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>macOS</th>
+<th>Linux</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Process/file activity</td>
+<td>Native <code>lsof</code> snapshots</td>
+<td>Visible <code>/proc</code> process data</td>
+</tr>
+<tr>
+<td>Mount boundaries</td>
+<td>Mount snapshots and filesystem identity</td>
+<td>Kernel/filesystem identity checks</td>
+</tr>
+<tr>
+<td>Path traversal</td>
+<td>Descriptor-relative no-follow traversal</td>
+<td><code>openat2</code> resolution restrictions</td>
+</tr>
+<tr>
+<td>External command bounds</td>
+<td>GNU <code>timeout</code> via coreutils</td>
+<td>GNU <code>timeout</code> via coreutils</td>
+</tr>
+<tr>
+<td>Workspace authorization</td>
+<td>Shared policy, native Git/JJ integration</td>
+<td>Shared policy, native Git/JJ integration</td>
+</tr>
+</tbody>
+</table>
+<p>Missing or incomplete required evidence retains candidates. These checks do not create an atomic lock against hostile concurrent writers.</p>
+<h2 id="interpreting-evidence">Interpreting evidence</h2>
+<ul>
+<li>A native build proves compilation for its target and configuration.</li>
+<li>A native fixture pass applies to its exact commit, test selection and environment.</li>
+<li>Cross-compilation or Linux-target Clippy on a Mac is static evidence, not a Linux runtime pass.</li>
+<li>Older commits' tests remain older-commit evidence until the new head is checked.</li>
+<li>Empty check lists, interrupted runs and zero-test filters are not passing suites.</li>
+</ul>
+<h2 id="current-development-snapshot">Current development snapshot</h2>
+<p>This documentation starts from <code>main</code> commit <code>8e73fe0</code>. Its stable compiler pin exposed a nightly-only wrapper option. The focused compatibility fix supports stable builds while preserving the exact nightly/dev allowlist and rejecting bootstrap overrides.</p>
+<p>The corrected snapshot passed <strong>1,022 native macOS tests, zero skipped</strong>, on Apple silicon with Rust 1.99.1 and macOS 27.0.1. That run used the <code>8e73fe0</code> base plus the reviewed portability fixes. The first complete run had 999 passes and 21 failures; those failures and the resource-stopped build attempts remain preserved.</p>
+<p>Corrections distinguish an empty test process index from unavailable visibility, use filesystem-portable raw-reference fixtures, and test native path limits explicitly. Production Mac activity checks remain fail closed. Debug symbols and incremental output were disabled for resource containment; runtime assertions and overflow behavior remained unchanged.</p>
+<p>The strict native Clippy run stopped at the approved 1 GiB task-owned build-cache limit while compiling additional metadata. It is incomplete, not a lint pass; the test result above is unaffected.</p>
+<p>Linux runtime verification is pending an authorized executor. The prepared native workflow requires an explicit hosted-runner approval before its Mac/Linux jobs execute. Historical Linux results are separate evidence and are not claimed as a current-branch pass.</p>
+<p>OS support policy, packaging, and a particular native verification receipt are different facts. See <a href="development.html">development</a> for the exact verification commands and <a href="releases.html">release packaging</a> for artifact provenance.</p>
+
+    <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="install.html"><small>Previous</small><span>Installation ←</span></a><a class="pager-next" href="usage.html"><small>Next</small><span>Common workflows →</span></a></nav>
+    <footer>Source snapshot <code>0494adc</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+  </main>
+  <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h2" href="#packaging-targets">Packaging targets</a><a class="toc-h2" href="#native-capability-boundary">Native capability boundary</a><a class="toc-h2" href="#interpreting-evidence">Interpreting evidence</a><a class="toc-h2" href="#current-development-snapshot">Current development snapshot</a></aside>
+</div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
+</body></html>
