@@ -67,7 +67,7 @@ cargo clippy --workspace --lib --bins --examples --all-features --locked -- -D w
 <p>Run Mac fixtures on macOS and Linux fixtures on Linux. Target checks do not validate another kernel's process/filesystem behavior. Do not substitute Docker/VM execution when a task requires an authorized native executor.</p>
 <p><code>test-plan.md</code>, <code>test-plan-review.md</code> and <code>test-suite-review.md</code> record broader contracts and historical evidence. Read their commit/scope and blocked cases before interpreting counts.</p>
 <h2 id="assurance-checks">Assurance checks</h2>
-<p>Tools include audit, deny, vet, geiger, machete, feature combinations and scoped mutations. Preserve real exit statuses and output. The checked-in Cargo license policy accepts MIT, Apache-2.0 and Unicode-3.0 for normal/build dependencies.</p>
+<p>Tools include audit, deny, vet, geiger, machete, feature combinations and scoped mutations. Preserve real exit statuses and output. The checked-in Cargo license policy accepts MIT, Apache-2.0, Unicode-3.0, BSD-3-Clause, Zlib and MPL-2.0 for normal/build dependencies.</p>
 <p>Do not add blanket exemptions or invent audits. Vet imports, publisher attestations and criteria need approved provenance before coverage can be claimed. Mutation inventories are candidates, not execution: require a baseline and classify caught, missed, unviable and interrupted outcomes.</p>
 <h2 id="build-these-docs">Build these docs</h2>
 <p>Python 3.10 or newer is required:</p>
@@ -80,7 +80,7 @@ python3 -m http.server 8000 --directory target/devdocs
 <p>The public site contains documentation only. It does not make the private source repository or release assets public.</p>
 
     <nav class="pager" aria-label="Adjacent pages"><a class="pager-previous" href="architecture.html"><small>Previous</small><span>Architecture ←</span></a><a class="pager-next" href="releases.html"><small>Next</small><span>Release packages →</span></a></nav>
-    <footer>Source snapshot <code>6dbc3a1</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
+    <footer>Source snapshot <code>3feaa4b</code> · Documentation only<br>Native runtime evidence is tracked on the <a href="platforms.html">platforms page</a>.</footer>
   </main>
   <aside class="page-outline" aria-label="On this page"><p>On this page</p><a class="toc-h2" href="#compiler-policy">Compiler policy</a><a class="toc-h2" href="#fast-checks">Fast checks</a><a class="toc-h2" href="#fixture-tests">Fixture tests</a><a class="toc-h2" href="#native-os-coverage">Native OS coverage</a><a class="toc-h2" href="#assurance-checks">Assurance checks</a><a class="toc-h2" href="#build-these-docs">Build these docs</a></aside>
 </div><div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
